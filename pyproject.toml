@@ -1,0 +1,11 @@
+[project]
+name = "uvc_gen"
+version = "1.0.0"
+requires-python = ">=3.8"
+dependencies = ["jinja2", "rich"]
+
+[project.scripts]
+uvc_gen = "uvc_gen:main"
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
