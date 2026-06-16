@@ -168,7 +168,10 @@ class UvcGen:
         
         uvc_info = UvcInfo(
             uvc_name=self.uvc_name,
-            version=self.version
+            version=self.version,
+            mode=self.mode,
+            master_num=self.master_num,
+            slave_num=self.slave_num
         )
 
         with Progress(

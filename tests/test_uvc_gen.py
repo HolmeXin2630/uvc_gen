@@ -2,6 +2,7 @@
 import subprocess
 import sys
 import argparse
+from pathlib import Path
 from unittest.mock import patch
 from uvc_gen import UvcInfo
 
@@ -78,3 +79,47 @@ def test_init_para_mstslv_mode_uses_mstslv_template():
         assert "xxx_uvc_mstslv" in gen.tpl_dir
     finally:
         pass
+
+def test_generate_uvc_creates_mstslv_files():
+    """mstslv mode should generate all 15 files with correct names."""
+    gen = __import__('uvc_gen').UvcGen()
+    output_dir = tempfile.mkdtemp()
+
+    # Create the mstslv template dir with placeholder files
+    mstslv_dir = gen.TEMPLATES_DIR / "default" / "xxx_uvc_mstslv"
+    mstslv_dir.mkdir(parents=True, exist_ok=True)
+
+    # Create minimal template files
+    templates = [
+        "xxx_intf.sv", "xxx_transaction.sv", "xxx_cfg.sv",
+        "xxx_mst_agent.sv", "xxx_mst_driver.sv", "xxx_mst_monitor.sv", "xxx_mst_sequencer.sv",
+        "xxx_slv_agent.sv", "xxx_slv_driver.sv", "xxx_slv_monitor.sv", "xxx_slv_sequencer.sv",
+        "xxx_env_cfg.sv", "xxx_env.sv", "xxx_seq_lib.sv", "xxx_package.svp"
+    ]
+    try:
+        for tpl in templates:
+            (mstslv_dir / tpl).write_text(f"// {tpl}\n")
+
+        gen.init_para(str(mstslv_dir), "ahb", "v1.0", output_dir, mode="mstslv", master_num=2, slave_num=1)
+        gen.parse_tpl_dir()
+        gen.generate_uvc()
+
+        out_uvc = Path(output_dir) / "ahb_uvc" / "v1.0"
+        assert out_uvc.exists()
+
+        # Check all expected files exist with correct names
+        expected_files = [
+            "ahb_intf.sv", "ahb_transaction.sv", "ahb_cfg.sv",
+            "ahb_mst_agent.sv", "ahb_mst_driver.sv", "ahb_mst_monitor.sv", "ahb_mst_sequencer.sv",
+            "ahb_slv_agent.sv", "ahb_slv_driver.sv", "ahb_slv_monitor.sv", "ahb_slv_sequencer.sv",
+            "ahb_env_cfg.sv", "ahb_env.sv", "ahb_seq_lib.sv", "ahb_package.svp"
+        ]
+        for f in expected_files:
+            assert (out_uvc / f).exists(), f"Missing: {f}"
+    finally:
+        import shutil
+        for tpl in templates:
+            p = mstslv_dir / tpl
+            if p.exists():
+                p.unlink()
+        shutil.rmtree(output_dir, ignore_errors=True)
