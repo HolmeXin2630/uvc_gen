@@ -28,11 +28,14 @@ class UvcGen:
         self.output: str = './'
         self.tpl_dir: Optional[str] = None
         self.version: str = ''
-        
-        # 使用脚本所在目录作为基准路径
+        self.mode: str = 'single'
+        self.master_num: int = 1
+        self.slave_num: int = 1
+
         script_dir = Path(__file__).resolve().parent
         self.TEMPLATES_DIR = script_dir / "templates"
         self.DEFAULT_TPL = str(self.TEMPLATES_DIR / "default" / "xxx_uvc")
+        self.MSTSLV_TPL = str(self.TEMPLATES_DIR / "default" / "xxx_uvc_mstslv")
 
     def get_input_args(self) -> argparse.Namespace:
         """获取命令行参数"""
@@ -63,23 +66,27 @@ class UvcGen:
 
     def _resolve_template_dir(self, tpl_dir: str) -> str:
         """解析模板目录路径
-        
+
         Args:
             tpl_dir: 模板目录路径，可以是绝对路径或文件夹名
-            
+
         Returns:
             解析后的绝对路径
         """
+        # Handle mode aliases
+        if tpl_dir == "mstslv":
+            return self.MSTSLV_TPL
+
         tpl_path = Path(tpl_dir)
-        
+
         # 如果是绝对路径且存在，直接返回
         if tpl_path.is_absolute() and tpl_path.exists():
             return str(tpl_path)
-        
+
         # 如果是相对路径但存在，转换为绝对路径
         if tpl_path.exists():
             return str(tpl_path.resolve())
-        
+
         # 尝试在templates目录下搜索匹配的文件夹
         if self.TEMPLATES_DIR.exists():
             for template_folder in self.TEMPLATES_DIR.iterdir():
@@ -90,18 +97,27 @@ class UvcGen:
                         return str(xxx_uvc_path)
                     else:
                         return str(template_folder)
-        
+
         # 如果都找不到，返回原始路径（让后续的存在性检查处理错误）
         return tpl_dir
 
-    def init_para(self, tpl_dir: str, uvc_name: str, version: str, output: str) -> None:
+    def init_para(self, tpl_dir: str, uvc_name: str, version: str, output: str,
+                  mode: str = 'single', master_num: int = 1, slave_num: int = 1) -> None:
         """初始化参数"""
+        self.mode = mode
+        self.master_num = master_num
+        self.slave_num = slave_num
+
+        # If tpl_dir is the default and mode is mstslv, switch to mstslv template
+        if mode == 'mstslv' and tpl_dir == self.DEFAULT_TPL:
+            tpl_dir = self.MSTSLV_TPL
+
         # 处理模板目录路径
         resolved_tpl_dir = self._resolve_template_dir(tpl_dir)
-        
+
         if not Path(resolved_tpl_dir).exists():
             raise FileNotFoundError(f"Template directory not found: {resolved_tpl_dir}")
-        
+
         self.tpl_dir = resolved_tpl_dir
         self.uvc_name = uvc_name
         self.version = version
@@ -212,7 +228,8 @@ def main() -> int:
     try:
         uvc_gen = UvcGen()
         args = uvc_gen.get_input_args()
-        uvc_gen.init_para(args.tpl_dir, args.uvc_name, args.version, args.output)
+        uvc_gen.init_para(args.tpl_dir, args.uvc_name, args.version, args.output,
+                          mode=args.mode, master_num=args.mst_num, slave_num=args.slv_num)
         uvc_gen.parse_tpl_dir()
         uvc_gen.generate_uvc()
         return 0

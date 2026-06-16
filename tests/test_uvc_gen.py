@@ -57,3 +57,24 @@ def test_cli_mst_slv_num_custom():
         args = gen.get_input_args()
     assert args.mst_num == 2
     assert args.slv_num == 3
+
+import tempfile, os
+
+def test_init_para_single_mode_uses_default_template():
+    """single mode should use templates/default/xxx_uvc/."""
+    gen = __import__('uvc_gen').UvcGen()
+    gen.init_para(gen.DEFAULT_TPL, "ahb", "v1.0", tempfile.mkdtemp())
+    assert "xxx_uvc" in gen.tpl_dir
+    assert "xxx_uvc_mstslv" not in gen.tpl_dir
+
+def test_init_para_mstslv_mode_uses_mstslv_template():
+    """mstslv mode should use templates/default/xxx_uvc_mstslv/."""
+    gen = __import__('uvc_gen').UvcGen()
+    # First create the mstslv template dir so it exists
+    mstslv_dir = gen.TEMPLATES_DIR / "default" / "xxx_uvc_mstslv"
+    mstslv_dir.mkdir(parents=True, exist_ok=True)
+    try:
+        gen.init_para("mstslv", "ahb", "v1.0", tempfile.mkdtemp())
+        assert "xxx_uvc_mstslv" in gen.tpl_dir
+    finally:
+        pass
