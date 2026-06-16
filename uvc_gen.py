@@ -11,12 +11,14 @@ from typing import List, Optional
 
 console = Console()
 
-@dataclass(order=True)
+@dataclass
 class UvcInfo:
     """UVC 信息类"""
     uvc_name: str = ''
-    uvc_num: int = 0
     version: str = ''
+    mode: str = 'single'
+    master_num: int = 1
+    slave_num: int = 1
 
 class UvcGen:
     """UVC 生成器类"""
