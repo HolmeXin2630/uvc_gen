@@ -1,0 +1,20 @@
+`ifndef {{ uvc_info.uvc_name.upper() }}_PACKAGE__SVP
+`define {{ uvc_info.uvc_name.upper() }}_PACKAGE__SVP
+
+{% set prefix = uvc_info.uvc_name + '_uvc/' + (uvc_info.version ~ '/' if uvc_info.version != '' else '') %}
+`include "{{prefix}}{{uvc_info.uvc_name}}_intf.sv"
+package {{ uvc_info.uvc_name }}_package;
+
+    import uvm_pkg::*;
+
+    `include "{{prefix}}{{uvc_info.uvc_name}}_transaction.sv"
+    `include "{{prefix}}{{uvc_info.uvc_name}}_config.sv"
+    `include "{{prefix}}{{uvc_info.uvc_name}}_sequencer.sv"
+    `include "{{prefix}}{{uvc_info.uvc_name}}_driver.sv"
+    `include "{{prefix}}{{uvc_info.uvc_name}}_monitor.sv"
+    `include "{{prefix}}{{uvc_info.uvc_name}}_agent.sv"
+    `include "{{prefix}}{{uvc_info.uvc_name}}_seq_lib.sv"
+    //`include "{{prefix}}{{uvc_info.uvc_name}}_environment.sv"
+
+endpackage
+`endif

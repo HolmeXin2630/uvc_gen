@@ -1,0 +1,212 @@
+import os
+import sys
+import argparse
+import jinja2
+from pathlib import Path
+from rich.console import Console
+from rich.progress import Progress, SpinnerColumn, TextColumn
+from rich.panel import Panel
+from dataclasses import dataclass
+from typing import List, Optional
+
+console = Console()
+
+@dataclass(order=True)
+class UvcInfo:
+    """UVC 信息类"""
+    uvc_name: str = ''
+    uvc_num: int = 0
+    version: str = ''
+
+class UvcGen:
+    """UVC 生成器类"""
+    def __init__(self):
+        self.uvc_name: str = ''
+        self.file_list: List[Path] = []
+        self.output: str = './'
+        self.tpl_dir: Optional[str] = None
+        self.version: str = ''
+        
+        # 使用脚本所在目录作为基准路径
+        script_dir = Path(__file__).resolve().parent
+        self.TEMPLATES_DIR = script_dir / "templates"
+        self.DEFAULT_TPL = str(self.TEMPLATES_DIR / "default" / "xxx_uvc")
+
+    def get_input_args(self) -> argparse.Namespace:
+        """获取命令行参数"""
+        parser = argparse.ArgumentParser(description='UVC Generator Tool')
+        parser.add_argument('-t', '--tpl_dir', 
+                          default=self.DEFAULT_TPL, 
+                          help='UVC template directory path (absolute path or folder name in templates/)')
+        parser.add_argument('-n', '--uvc_name', 
+                          required=True,
+                          help='UVC name')
+        parser.add_argument('-o', '--output',
+                          default=os.getcwd(),
+                          help='Output directory path')
+        parser.add_argument('-v', '--version',
+                          default='v1.0',
+                          help='UVC version')
+        return parser.parse_args()
+
+    def _resolve_template_dir(self, tpl_dir: str) -> str:
+        """解析模板目录路径
+        
+        Args:
+            tpl_dir: 模板目录路径，可以是绝对路径或文件夹名
+            
+        Returns:
+            解析后的绝对路径
+        """
+        tpl_path = Path(tpl_dir)
+        
+        # 如果是绝对路径且存在，直接返回
+        if tpl_path.is_absolute() and tpl_path.exists():
+            return str(tpl_path)
+        
+        # 如果是相对路径但存在，转换为绝对路径
+        if tpl_path.exists():
+            return str(tpl_path.resolve())
+        
+        # 尝试在templates目录下搜索匹配的文件夹
+        if self.TEMPLATES_DIR.exists():
+            for template_folder in self.TEMPLATES_DIR.iterdir():
+                if template_folder.is_dir() and template_folder.name == tpl_dir:
+                    # 检查是否包含xxx_uvc子目录
+                    xxx_uvc_path = template_folder / "xxx_uvc"
+                    if xxx_uvc_path.exists():
+                        return str(xxx_uvc_path)
+                    else:
+                        return str(template_folder)
+        
+        # 如果都找不到，返回原始路径（让后续的存在性检查处理错误）
+        return tpl_dir
+
+    def init_para(self, tpl_dir: str, uvc_name: str, version: str, output: str) -> None:
+        """初始化参数"""
+        # 处理模板目录路径
+        resolved_tpl_dir = self._resolve_template_dir(tpl_dir)
+        
+        if not Path(resolved_tpl_dir).exists():
+            raise FileNotFoundError(f"Template directory not found: {resolved_tpl_dir}")
+        
+        self.tpl_dir = resolved_tpl_dir
+        self.uvc_name = uvc_name
+        self.version = version
+        self.output = output
+
+    def parse_tpl_dir(self) -> List[Path]:
+        """解析模板目录"""
+        file_list = []
+        p = Path(self.tpl_dir)
+        
+        console.print(Panel(f"[bold cyan]Template Directory[/]\n{p.resolve()}", expand=False))
+        
+        with Progress(
+            SpinnerColumn(),
+            TextColumn("[progress.description]{task.description}"),
+            console=console,
+        ) as progress:
+            task = progress.add_task("[cyan]Parsing template files...", total=None)
+            
+            try:
+                for file_path in p.iterdir():
+                    if file_path.is_file():
+                        #progress.console.print(f"[green]Found:[/] {file_path.name}")
+                        file_list.append(file_path)
+            except Exception as e:
+                console.print(f"[red]Error parsing template directory:[/] {str(e)}")
+                raise
+            
+            progress.update(task, completed=True)
+        
+        self.file_list = file_list
+        return file_list
+
+    def generate_uvc(self) -> None:
+        """生成 UVC 文件"""
+        env = jinja2.Environment(
+            loader=jinja2.FileSystemLoader(self.tpl_dir),
+            trim_blocks=True,
+            lstrip_blocks=True
+        )
+        
+        # 确定输出目录
+        out_dir = Path(self.output).joinpath(
+            f'{self.uvc_name}_uvc',
+            self.version if self.version else ''
+        )
+        console.print(Panel(f"[bold cyan]Output Directory[/]\n{out_dir.resolve()}", expand=False))
+        
+        uvc_info = UvcInfo(
+            uvc_name=self.uvc_name,
+            version=self.version
+        )
+
+        with Progress(
+            SpinnerColumn(),
+            TextColumn("[progress.description]{task.description}"),
+            console=console,
+        ) as progress:
+            task = progress.add_task(
+                "[cyan]Generating UVC files...", 
+                total=len(self.file_list)
+            )
+
+            for file_path in self.file_list:
+                try:
+                    rel_path = file_path.relative_to(self.tpl_dir)
+                    output_path = out_dir.joinpath(rel_path)
+
+                    # 修改文件名前缀
+                    if output_path.name.startswith('xxx_'):
+                        new_filename = output_path.name.replace('xxx_', f'{self.uvc_name}_', 1)
+                        output_path = output_path.with_name(new_filename)
+
+                    # 创建输出文件夹
+                    output_path.parent.mkdir(parents=True, exist_ok=True)
+
+                    # 读取并渲染模板
+                    content = file_path.read_text(encoding='utf-8')
+                    template = env.from_string(content)
+                    rendered_content = template.render(uvc_info=uvc_info)
+                    
+                    # 写入文件
+                    output_path.write_text(rendered_content, encoding='utf-8')
+                    #progress.console.print(f"[green]✓[/] Generated: {output_path.name}")
+                
+                except jinja2.TemplateError as e:
+                    progress.console.print(f"[red]✗[/] Template error in {file_path.name}: {str(e)}")
+                    continue
+                except Exception as e:
+                    progress.console.print(f"[red]✗[/] Error processing {file_path.name}: {str(e)}")
+                    continue
+                
+                progress.advance(task)
+
+        # 创建 latest 符号链接
+        if self.version:
+            try:
+                latest_link = Path(self.output).joinpath(f'{self.uvc_name}_uvc', 'latest')
+                if latest_link.exists():
+                    latest_link.unlink()
+                latest_link.symlink_to(self.version)
+                console.print(f"[green]✓[/] Created symbolic link: {latest_link} -> {self.version}")
+            except Exception as e:
+                console.print(f"[red]✗[/] Failed to create symbolic link: {str(e)}")
+
+def main() -> int:
+    """主函数"""
+    try:
+        uvc_gen = UvcGen()
+        args = uvc_gen.get_input_args()
+        uvc_gen.init_para(args.tpl_dir, args.uvc_name, args.version, args.output)
+        uvc_gen.parse_tpl_dir()
+        uvc_gen.generate_uvc()
+        return 0
+    except Exception as e:
+        console.print(f"[red]Error:[/] {str(e)}")
+        return 1
+
+if __name__ == '__main__':
+    sys.exit(main())
