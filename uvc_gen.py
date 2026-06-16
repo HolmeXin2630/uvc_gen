@@ -49,6 +49,16 @@ class UvcGen:
         parser.add_argument('-v', '--version',
                           default='v1.0',
                           help='UVC version')
+        parser.add_argument('-m', '--mode',
+                          choices=['single', 'mstslv'],
+                          default='single',
+                          help='Generation mode: single (default) or mstslv')
+        parser.add_argument('--mst-num',
+                          type=int, default=1,
+                          help='Number of master agents (mstslv mode)')
+        parser.add_argument('--slv-num',
+                          type=int, default=1,
+                          help='Number of slave agents (mstslv mode)')
         return parser.parse_args()
 
     def _resolve_template_dir(self, tpl_dir: str) -> str:
