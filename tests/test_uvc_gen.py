@@ -96,6 +96,12 @@ def test_generate_uvc_creates_mstslv_files():
         "xxx_slv_agent.sv", "xxx_slv_driver.sv", "xxx_slv_monitor.sv", "xxx_slv_sequencer.sv",
         "xxx_env_cfg.sv", "xxx_env.sv", "xxx_seq_lib.sv", "xxx_package.svp"
     ]
+    # Save existing template files so we can restore them after the test
+    saved_templates = {}
+    for tpl in templates:
+        p = mstslv_dir / tpl
+        if p.exists():
+            saved_templates[tpl] = p.read_text()
     try:
         for tpl in templates:
             (mstslv_dir / tpl).write_text(f"// {tpl}\n")
@@ -118,8 +124,90 @@ def test_generate_uvc_creates_mstslv_files():
             assert (out_uvc / f).exists(), f"Missing: {f}"
     finally:
         import shutil
+        # Restore original template files
         for tpl in templates:
             p = mstslv_dir / tpl
-            if p.exists():
+            if tpl in saved_templates:
+                p.write_text(saved_templates[tpl])
+            elif p.exists():
                 p.unlink()
         shutil.rmtree(output_dir, ignore_errors=True)
+
+
+def test_mstslv_env_contains_dynamic_arrays():
+    """env.sv should contain mst_agt[] and slv_agt[] dynamic arrays."""
+    gen = __import__('uvc_gen').UvcGen()
+    output_dir = tempfile.mkdtemp()
+    mstslv_dir = gen.TEMPLATES_DIR / "default" / "xxx_uvc_mstslv"
+    gen.init_para(str(mstslv_dir), "ahb", "v1.0", output_dir, mode="mstslv", master_num=2, slave_num=3)
+    gen.parse_tpl_dir()
+    gen.generate_uvc()
+
+    env_content = (Path(output_dir) / "ahb_uvc" / "v1.0" / "ahb_env.sv").read_text()
+    assert "mst_agt[]" in env_content
+    assert "slv_agt[]" in env_content
+    assert "ahb_mst_agent" in env_content
+    assert "ahb_slv_agent" in env_content
+
+def test_mstslv_env_cfg_contains_nums():
+    """env_cfg.sv should contain master_num and slave_num."""
+    gen = __import__('uvc_gen').UvcGen()
+    output_dir = tempfile.mkdtemp()
+    mstslv_dir = gen.TEMPLATES_DIR / "default" / "xxx_uvc_mstslv"
+    gen.init_para(str(mstslv_dir), "ahb", "v1.0", output_dir, mode="mstslv", master_num=2, slave_num=3)
+    gen.parse_tpl_dir()
+    gen.generate_uvc()
+
+    cfg_content = (Path(output_dir) / "ahb_uvc" / "v1.0" / "ahb_env_cfg.sv").read_text()
+    assert "master_num" in cfg_content
+    assert "slave_num" in cfg_content
+    assert "mst_cfg[]" in cfg_content
+    assert "slv_cfg[]" in cfg_content
+
+def test_mstslv_intf_has_four_clocking_blocks():
+    """intf.sv should have 4 clocking blocks: cb_mst_drv, cb_mst_mon, cb_slv_drv, cb_slv_mon."""
+    gen = __import__('uvc_gen').UvcGen()
+    output_dir = tempfile.mkdtemp()
+    mstslv_dir = gen.TEMPLATES_DIR / "default" / "xxx_uvc_mstslv"
+    gen.init_para(str(mstslv_dir), "ahb", "v1.0", output_dir, mode="mstslv")
+    gen.parse_tpl_dir()
+    gen.generate_uvc()
+
+    intf_content = (Path(output_dir) / "ahb_uvc" / "v1.0" / "ahb_intf.sv").read_text()
+    assert "clocking cb_mst_drv" in intf_content
+    assert "clocking cb_mst_mon" in intf_content
+    assert "clocking cb_slv_drv" in intf_content
+    assert "clocking cb_slv_mon" in intf_content
+
+def test_mstslv_driver_uses_correct_clocking_block():
+    """mst_driver should use cb_mst_drv, slv_driver should use cb_slv_drv."""
+    gen = __import__('uvc_gen').UvcGen()
+    output_dir = tempfile.mkdtemp()
+    mstslv_dir = gen.TEMPLATES_DIR / "default" / "xxx_uvc_mstslv"
+    gen.init_para(str(mstslv_dir), "ahb", "v1.0", output_dir, mode="mstslv")
+    gen.parse_tpl_dir()
+    gen.generate_uvc()
+
+    mst_drv = (Path(output_dir) / "ahb_uvc" / "v1.0" / "ahb_mst_driver.sv").read_text()
+    slv_drv = (Path(output_dir) / "ahb_uvc" / "v1.0" / "ahb_slv_driver.sv").read_text()
+    assert "cb_mst_drv" in mst_drv
+    assert "cb_slv_drv" in slv_drv
+    assert "cb_slv_drv" not in mst_drv
+    assert "cb_mst_drv" not in slv_drv
+
+def test_single_mode_still_works():
+    """single mode should still generate the original 10 files."""
+    gen = __import__('uvc_gen').UvcGen()
+    output_dir = tempfile.mkdtemp()
+    gen.init_para(gen.DEFAULT_TPL, "spi", "v1.0", output_dir, mode="single")
+    gen.parse_tpl_dir()
+    gen.generate_uvc()
+
+    out_uvc = Path(output_dir) / "spi_uvc" / "v1.0"
+    expected = [
+        "spi_agent.sv", "spi_config.sv", "spi_driver.sv",
+        "spi_environment.sv", "spi_intf.sv", "spi_monitor.sv",
+        "spi_package.svp", "spi_seq_lib.sv", "spi_sequencer.sv", "spi_transaction.sv"
+    ]
+    for f in expected:
+        assert (out_uvc / f).exists(), f"Missing: {f}"
