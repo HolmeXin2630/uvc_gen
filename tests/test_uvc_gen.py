@@ -460,3 +460,94 @@ def test_optional_components_default_not_in_output():
     finally:
         import shutil
         shutil.rmtree(output_dir, ignore_errors=True)
+
+
+def test_mstslv_with_coverage():
+    """mstslv mode with --with-coverage generates coverage file."""
+    gen = __import__('uvc_gen').UvcGen()
+    output_dir = tempfile.mkdtemp()
+    mstslv_dir = gen.TEMPLATES_DIR / "default" / "xxx_uvc_mstslv"
+    try:
+        gen.init_para(str(mstslv_dir), "ahb", "v1.0", output_dir,
+                      mode="mstslv", with_coverage=True)
+        gen.parse_tpl_dir()
+        gen.generate_uvc()
+
+        assert (Path(output_dir) / "ahb_uvc" / "v1.0" / "ahb_coverage.sv").exists()
+        pkg_content = (Path(output_dir) / "ahb_uvc" / "v1.0" / "ahb_package.svp").read_text()
+        lines = pkg_content.split('\n')
+        cov_line = [l for l in lines if "coverage.sv" in l][0]
+        assert not cov_line.strip().startswith("//")
+    finally:
+        import shutil
+        shutil.rmtree(output_dir, ignore_errors=True)
+
+
+def test_mstslv_with_scoreboard():
+    """mstslv mode with --with-scoreboard generates scoreboard file."""
+    gen = __import__('uvc_gen').UvcGen()
+    output_dir = tempfile.mkdtemp()
+    mstslv_dir = gen.TEMPLATES_DIR / "default" / "xxx_uvc_mstslv"
+    try:
+        gen.init_para(str(mstslv_dir), "ahb", "v1.0", output_dir,
+                      mode="mstslv", with_scoreboard=True)
+        gen.parse_tpl_dir()
+        gen.generate_uvc()
+
+        assert (Path(output_dir) / "ahb_uvc" / "v1.0" / "ahb_scoreboard.sv").exists()
+        pkg_content = (Path(output_dir) / "ahb_uvc" / "v1.0" / "ahb_package.svp").read_text()
+        lines = pkg_content.split('\n')
+        sb_line = [l for l in lines if "scoreboard.sv" in l][0]
+        assert not sb_line.strip().startswith("//")
+    finally:
+        import shutil
+        shutil.rmtree(output_dir, ignore_errors=True)
+
+
+def test_mstslv_with_ref_model():
+    """mstslv mode with --with-ref-model generates ref_model file."""
+    gen = __import__('uvc_gen').UvcGen()
+    output_dir = tempfile.mkdtemp()
+    mstslv_dir = gen.TEMPLATES_DIR / "default" / "xxx_uvc_mstslv"
+    try:
+        gen.init_para(str(mstslv_dir), "ahb", "v1.0", output_dir,
+                      mode="mstslv", with_ref_model=True)
+        gen.parse_tpl_dir()
+        gen.generate_uvc()
+
+        assert (Path(output_dir) / "ahb_uvc" / "v1.0" / "ahb_ref_model.sv").exists()
+        pkg_content = (Path(output_dir) / "ahb_uvc" / "v1.0" / "ahb_package.svp").read_text()
+        lines = pkg_content.split('\n')
+        ref_line = [l for l in lines if "ref_model.sv" in l][0]
+        assert not ref_line.strip().startswith("//")
+    finally:
+        import shutil
+        shutil.rmtree(output_dir, ignore_errors=True)
+
+
+def test_mstslv_optional_components_default_not_in_output():
+    """Default mstslv mode should NOT generate optional component files."""
+    gen = __import__('uvc_gen').UvcGen()
+    output_dir = tempfile.mkdtemp()
+    mstslv_dir = gen.TEMPLATES_DIR / "default" / "xxx_uvc_mstslv"
+    try:
+        gen.init_para(str(mstslv_dir), "ahb", "v1.0", output_dir, mode="mstslv")
+        gen.parse_tpl_dir()
+        gen.generate_uvc()
+
+        out_dir = Path(output_dir) / "ahb_uvc" / "v1.0"
+        assert not (out_dir / "ahb_coverage.sv").exists()
+        assert not (out_dir / "ahb_scoreboard.sv").exists()
+        assert not (out_dir / "ahb_ref_model.sv").exists()
+
+        # Verify includes are commented out
+        pkg_content = (out_dir / "ahb_package.svp").read_text()
+        lines = pkg_content.split('\n')
+        cov_lines = [l for l in lines if "coverage.sv" in l]
+        sb_lines = [l for l in lines if "scoreboard.sv" in l]
+        ref_lines = [l for l in lines if "ref_model.sv" in l]
+        for l in cov_lines + sb_lines + ref_lines:
+            assert l.strip().startswith("//")
+    finally:
+        import shutil
+        shutil.rmtree(output_dir, ignore_errors=True)

@@ -21,5 +21,29 @@ package {{ uvc_info.uvc_name }}_package;
     `include "{{prefix}}{{uvc_info.uvc_name}}_env.sv"
     `include "{{prefix}}{{uvc_info.uvc_name}}_seq_lib.sv"
 
+{% if uvc_info.with_coverage %}
+    // === Coverage ===
+    `include "{{prefix}}{{uvc_info.uvc_name}}_coverage.sv"
+{% else %}
+    // === Coverage (enable with --with-coverage) ===
+    //`include "{{prefix}}{{uvc_info.uvc_name}}_coverage.sv"
+{% endif %}
+
+{% if uvc_info.with_scoreboard %}
+    // === Scoreboard ===
+    `include "{{prefix}}{{uvc_info.uvc_name}}_scoreboard.sv"
+{% else %}
+    // === Scoreboard (enable with --with-scoreboard) ===
+    //`include "{{prefix}}{{uvc_info.uvc_name}}_scoreboard.sv"
+{% endif %}
+
+{% if uvc_info.with_ref_model %}
+    // === Reference Model ===
+    `include "{{prefix}}{{uvc_info.uvc_name}}_ref_model.sv"
+{% else %}
+    // === Reference Model (enable with --with-ref-model) ===
+    //`include "{{prefix}}{{uvc_info.uvc_name}}_ref_model.sv"
+{% endif %}
+
 endpackage
 `endif
