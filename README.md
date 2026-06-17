@@ -159,37 +159,37 @@ generate_uvc("ahb", agent_num=3, with_env=True, with_coverage=True)
 ### 模块导入调用
 
 ```python
-import sys
-sys.path.insert(0, "/path/to/uvc_gen")
+from uvc_gen import UvcGen, UvcInfo, build_parser
 
-from uvc_gen import UvcGen, UvcInfo
+# 简单调用（推荐）
+gen = UvcGen()
+gen.init_para(gen.DEFAULT_TPL, "ahb", "v1.0", "./output")
+gen.parse_tpl_dir()
+gen.generate_uvc()
 
-def generate_uvc(uvc_name, mode="single", version="v1.0", output="./output",
-                 mst_num=1, slv_num=1, agent_num=1,
-                 with_env=False, with_coverage=False,
-                 with_scoreboard=False, with_ref_model=False):
-    """使用 UvcGen 类生成 UVC"""
-    gen = UvcGen()
-    gen.init_para(
-        tpl_dir=gen.DEFAULT_TPL if mode == "single" else gen.MSTSLV_TPL,
-        uvc_name=uvc_name,
-        version=version,
-        output=output,
-        mode=mode,
-        master_num=mst_num,
-        slave_num=slv_num,
-        agent_num=agent_num,
-        with_env=with_env,
-        with_coverage=with_coverage,
-        with_scoreboard=with_scoreboard,
-        with_ref_model=with_ref_model
-    )
-    gen.parse_tpl_dir()
-    gen.generate_uvc()
+# 完整参数
+gen = UvcGen()
+gen.init_para(
+    tpl_dir=gen.DEFAULT_TPL,
+    uvc_name="ahb",
+    version="v1.0",
+    output="./output",
+    mode="single",
+    agent_num=3,
+    with_env=True,
+    with_coverage=True
+)
+gen.parse_tpl_dir()
+gen.generate_uvc()
 
-# 使用示例
-generate_uvc("ahb", mode="mstslv", mst_num=2, slv_num=1)
-generate_uvc("ahb", agent_num=3, with_env=True, with_coverage=True)
+# 访问 UvcInfo（单一数据源）
+print(gen.info.uvc_name)    # "ahb"
+print(gen.info.agent_num)   # 3
+print(gen.with_env)         # True（属性别名，兼容旧代码）
+
+# CLI 参数解析（测试友好，无需 mock sys.argv）
+parser = build_parser()
+args = parser.parse_args(['-n', 'ahb', '--with-env', '--agent-num', '3'])
 ```
 
 ## 模板变量
