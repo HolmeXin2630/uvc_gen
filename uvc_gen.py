@@ -19,6 +19,11 @@ class UvcInfo:
     mode: str = 'single'
     master_num: int = 1
     slave_num: int = 1
+    agent_num: int = 1
+    with_env: bool = False
+    with_coverage: bool = False
+    with_scoreboard: bool = False
+    with_ref_model: bool = False
 
 class UvcGen:
     """UVC 生成器类"""
@@ -31,6 +36,11 @@ class UvcGen:
         self.mode: str = 'single'
         self.master_num: int = 1
         self.slave_num: int = 1
+        self.agent_num: int = 1
+        self.with_env: bool = False
+        self.with_coverage: bool = False
+        self.with_scoreboard: bool = False
+        self.with_ref_model: bool = False
 
         script_dir = Path(__file__).resolve().parent
         self.TEMPLATES_DIR = script_dir / "templates"
@@ -62,6 +72,21 @@ class UvcGen:
         parser.add_argument('--slv-num',
                           type=int, default=1,
                           help='Number of slave agents (mstslv mode)')
+        parser.add_argument('--agent-num',
+                          type=int, default=1,
+                          help='Number of agents (single mode)')
+        parser.add_argument('--with-env',
+                          action='store_true', default=False,
+                          help='Enable env/env_cfg includes in package')
+        parser.add_argument('--with-coverage',
+                          action='store_true', default=False,
+                          help='Enable coverage collector include in package')
+        parser.add_argument('--with-scoreboard',
+                          action='store_true', default=False,
+                          help='Enable scoreboard include in package')
+        parser.add_argument('--with-ref-model',
+                          action='store_true', default=False,
+                          help='Enable reference model include in package')
         return parser.parse_args()
 
     def _resolve_template_dir(self, tpl_dir: str) -> str:
@@ -102,11 +127,19 @@ class UvcGen:
         return tpl_dir
 
     def init_para(self, tpl_dir: str, uvc_name: str, version: str, output: str,
-                  mode: str = 'single', master_num: int = 1, slave_num: int = 1) -> None:
+                  mode: str = 'single', master_num: int = 1, slave_num: int = 1,
+                  agent_num: int = 1, with_env: bool = False,
+                  with_coverage: bool = False, with_scoreboard: bool = False,
+                  with_ref_model: bool = False) -> None:
         """初始化参数"""
         self.mode = mode
         self.master_num = master_num
         self.slave_num = slave_num
+        self.agent_num = agent_num
+        self.with_env = with_env
+        self.with_coverage = with_coverage
+        self.with_scoreboard = with_scoreboard
+        self.with_ref_model = with_ref_model
 
         # If tpl_dir is the default and mode is mstslv, switch to mstslv template
         if mode == 'mstslv' and tpl_dir == self.DEFAULT_TPL:
@@ -171,7 +204,12 @@ class UvcGen:
             version=self.version,
             mode=self.mode,
             master_num=self.master_num,
-            slave_num=self.slave_num
+            slave_num=self.slave_num,
+            agent_num=self.agent_num,
+            with_env=self.with_env,
+            with_coverage=self.with_coverage,
+            with_scoreboard=self.with_scoreboard,
+            with_ref_model=self.with_ref_model
         )
 
         with Progress(
@@ -232,7 +270,10 @@ def main() -> int:
         uvc_gen = UvcGen()
         args = uvc_gen.get_input_args()
         uvc_gen.init_para(args.tpl_dir, args.uvc_name, args.version, args.output,
-                          mode=args.mode, master_num=args.mst_num, slave_num=args.slv_num)
+                          mode=args.mode, master_num=args.mst_num, slave_num=args.slv_num,
+                          agent_num=args.agent_num, with_env=args.with_env,
+                          with_coverage=args.with_coverage, with_scoreboard=args.with_scoreboard,
+                          with_ref_model=args.with_ref_model)
         uvc_gen.parse_tpl_dir()
         uvc_gen.generate_uvc()
         return 0

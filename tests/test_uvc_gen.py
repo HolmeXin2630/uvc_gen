@@ -211,3 +211,61 @@ def test_single_mode_still_works():
     ]
     for f in expected:
         assert (out_uvc / f).exists(), f"Missing: {f}"
+
+def test_cli_agent_num_default():
+    """--agent-num defaults to 1."""
+    gen = __import__('uvc_gen').UvcGen()
+    with patch('sys.argv', ['uvc_gen', '-n', 'ahb']):
+        args = gen.get_input_args()
+    assert args.agent_num == 1
+
+def test_cli_agent_num_custom():
+    """--agent-num 3 is accepted."""
+    gen = __import__('uvc_gen').UvcGen()
+    with patch('sys.argv', ['uvc_gen', '-n', 'ahb', '--agent-num', '3']):
+        args = gen.get_input_args()
+    assert args.agent_num == 3
+
+def test_cli_with_env_flag():
+    """--with-env sets with_env=True."""
+    gen = __import__('uvc_gen').UvcGen()
+    with patch('sys.argv', ['uvc_gen', '-n', 'ahb', '--with-env']):
+        args = gen.get_input_args()
+    assert args.with_env is True
+
+def test_cli_with_env_default_false():
+    """--with-env defaults to False."""
+    gen = __import__('uvc_gen').UvcGen()
+    with patch('sys.argv', ['uvc_gen', '-n', 'ahb']):
+        args = gen.get_input_args()
+    assert args.with_env is False
+
+def test_cli_with_coverage_flag():
+    """--with-coverage sets with_coverage=True."""
+    gen = __import__('uvc_gen').UvcGen()
+    with patch('sys.argv', ['uvc_gen', '-n', 'ahb', '--with-coverage']):
+        args = gen.get_input_args()
+    assert args.with_coverage is True
+
+def test_cli_with_scoreboard_flag():
+    """--with-scoreboard sets with_scoreboard=True."""
+    gen = __import__('uvc_gen').UvcGen()
+    with patch('sys.argv', ['uvc_gen', '-n', 'ahb', '--with-scoreboard']):
+        args = gen.get_input_args()
+    assert args.with_scoreboard is True
+
+def test_cli_with_ref_model_flag():
+    """--with-ref-model sets with_ref_model=True."""
+    gen = __import__('uvc_gen').UvcGen()
+    with patch('sys.argv', ['uvc_gen', '-n', 'ahb', '--with-ref-model']):
+        args = gen.get_input_args()
+    assert args.with_ref_model is True
+
+def test_uvc_info_new_fields():
+    """UvcInfo should have agent_num and with_* fields."""
+    info = UvcInfo(uvc_name="ahb", agent_num=3, with_env=True, with_coverage=True)
+    assert info.agent_num == 3
+    assert info.with_env is True
+    assert info.with_coverage is True
+    assert info.with_scoreboard is False
+    assert info.with_ref_model is False
