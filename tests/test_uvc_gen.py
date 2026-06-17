@@ -379,3 +379,84 @@ def test_single_mode_multi_agent_auto_implies_env():
     finally:
         import shutil
         shutil.rmtree(output_dir, ignore_errors=True)
+
+
+def test_single_mode_with_coverage_includes():
+    """--with-coverage uncomments coverage include and generates file."""
+    gen = __import__('uvc_gen').UvcGen()
+    output_dir = tempfile.mkdtemp()
+    try:
+        gen.init_para(gen.DEFAULT_TPL, "ahb", "v1.0", output_dir,
+                      mode="single", with_coverage=True)
+        gen.parse_tpl_dir()
+        gen.generate_uvc()
+
+        pkg_content = (Path(output_dir) / "ahb_uvc" / "v1.0" / "ahb_package.svp").read_text()
+        lines = pkg_content.split('\n')
+        coverage_line = [l for l in lines if "coverage.sv" in l][0]
+        assert not coverage_line.strip().startswith("//")
+
+        assert (Path(output_dir) / "ahb_uvc" / "v1.0" / "ahb_coverage.sv").exists()
+    finally:
+        import shutil
+        shutil.rmtree(output_dir, ignore_errors=True)
+
+
+def test_single_mode_with_scoreboard_includes():
+    """--with-scoreboard uncomments scoreboard include and generates file."""
+    gen = __import__('uvc_gen').UvcGen()
+    output_dir = tempfile.mkdtemp()
+    try:
+        gen.init_para(gen.DEFAULT_TPL, "ahb", "v1.0", output_dir,
+                      mode="single", with_scoreboard=True)
+        gen.parse_tpl_dir()
+        gen.generate_uvc()
+
+        pkg_content = (Path(output_dir) / "ahb_uvc" / "v1.0" / "ahb_package.svp").read_text()
+        lines = pkg_content.split('\n')
+        sb_line = [l for l in lines if "scoreboard.sv" in l][0]
+        assert not sb_line.strip().startswith("//")
+
+        assert (Path(output_dir) / "ahb_uvc" / "v1.0" / "ahb_scoreboard.sv").exists()
+    finally:
+        import shutil
+        shutil.rmtree(output_dir, ignore_errors=True)
+
+
+def test_single_mode_with_ref_model_includes():
+    """--with-ref-model uncomments ref_model include and generates file."""
+    gen = __import__('uvc_gen').UvcGen()
+    output_dir = tempfile.mkdtemp()
+    try:
+        gen.init_para(gen.DEFAULT_TPL, "ahb", "v1.0", output_dir,
+                      mode="single", with_ref_model=True)
+        gen.parse_tpl_dir()
+        gen.generate_uvc()
+
+        pkg_content = (Path(output_dir) / "ahb_uvc" / "v1.0" / "ahb_package.svp").read_text()
+        lines = pkg_content.split('\n')
+        ref_line = [l for l in lines if "ref_model.sv" in l][0]
+        assert not ref_line.strip().startswith("//")
+
+        assert (Path(output_dir) / "ahb_uvc" / "v1.0" / "ahb_ref_model.sv").exists()
+    finally:
+        import shutil
+        shutil.rmtree(output_dir, ignore_errors=True)
+
+
+def test_optional_components_default_not_in_output():
+    """Default single mode should NOT generate optional component files."""
+    gen = __import__('uvc_gen').UvcGen()
+    output_dir = tempfile.mkdtemp()
+    try:
+        gen.init_para(gen.DEFAULT_TPL, "ahb", "v1.0", output_dir, mode="single")
+        gen.parse_tpl_dir()
+        gen.generate_uvc()
+
+        out_dir = Path(output_dir) / "ahb_uvc" / "v1.0"
+        assert not (out_dir / "ahb_coverage.sv").exists()
+        assert not (out_dir / "ahb_scoreboard.sv").exists()
+        assert not (out_dir / "ahb_ref_model.sv").exists()
+    finally:
+        import shutil
+        shutil.rmtree(output_dir, ignore_errors=True)

@@ -223,6 +223,17 @@ class UvcGen:
             file_list = [f for f in file_list
                          if f.name != 'xxx_environment_cfg.sv']
 
+        # Filter out optional component templates when not requested
+        optional_skip = set()
+        if not self.with_coverage:
+            optional_skip.add('xxx_coverage.sv')
+        if not self.with_scoreboard:
+            optional_skip.add('xxx_scoreboard.sv')
+        if not self.with_ref_model:
+            optional_skip.add('xxx_ref_model.sv')
+        if optional_skip:
+            file_list = [f for f in file_list if f.name not in optional_skip]
+
         with Progress(
             SpinnerColumn(),
             TextColumn("[progress.description]{task.description}"),
