@@ -25,68 +25,147 @@ class UvcInfo:
     with_scoreboard: bool = False
     with_ref_model: bool = False
 
+
+def build_parser(default_tpl: str = '') -> argparse.ArgumentParser:
+    """构建命令行参数解析器（独立函数，方便测试直接调用）"""
+    parser = argparse.ArgumentParser(description='UVC Generator Tool')
+    parser.add_argument('-t', '--tpl_dir',
+                      default=default_tpl,
+                      help='UVC template directory path (absolute path or folder name in templates/)')
+    parser.add_argument('-n', '--uvc_name',
+                      required=True,
+                      help='UVC name')
+    parser.add_argument('-o', '--output',
+                      default=os.getcwd(),
+                      help='Output directory path')
+    parser.add_argument('-v', '--version',
+                      default='v1.0',
+                      help='UVC version')
+    parser.add_argument('-m', '--mode',
+                      choices=['single', 'mstslv'],
+                      default='single',
+                      help='Generation mode: single (default) or mstslv')
+    parser.add_argument('--mst-num',
+                      type=int, default=1,
+                      help='Number of master agents (mstslv mode)')
+    parser.add_argument('--slv-num',
+                      type=int, default=1,
+                      help='Number of slave agents (mstslv mode)')
+    parser.add_argument('--agent-num',
+                      type=int, default=1,
+                      help='Number of agents (single mode)')
+    parser.add_argument('--with-env',
+                      action='store_true', default=False,
+                      help='Enable env/env_cfg includes in package')
+    parser.add_argument('--with-coverage',
+                      action='store_true', default=False,
+                      help='Enable coverage collector include in package')
+    parser.add_argument('--with-scoreboard',
+                      action='store_true', default=False,
+                      help='Enable scoreboard include in package')
+    parser.add_argument('--with-ref-model',
+                      action='store_true', default=False,
+                      help='Enable reference model include in package')
+    return parser
+
+
 class UvcGen:
     """UVC 生成器类"""
     def __init__(self):
-        self.uvc_name: str = ''
+        self.info: UvcInfo = UvcInfo()
         self.file_list: List[Path] = []
         self.output: str = './'
         self.tpl_dir: Optional[str] = None
-        self.version: str = ''
-        self.mode: str = 'single'
-        self.master_num: int = 1
-        self.slave_num: int = 1
-        self.agent_num: int = 1
-        self.with_env: bool = False
-        self.with_coverage: bool = False
-        self.with_scoreboard: bool = False
-        self.with_ref_model: bool = False
 
         script_dir = Path(__file__).resolve().parent
         self.TEMPLATES_DIR = script_dir / "templates"
         self.DEFAULT_TPL = str(self.TEMPLATES_DIR / "default" / "xxx_uvc")
         self.MSTSLV_TPL = str(self.TEMPLATES_DIR / "default" / "xxx_uvc_mstslv")
 
+    # --- Property aliases for backward compatibility ---
+    @property
+    def uvc_name(self) -> str:
+        return self.info.uvc_name
+
+    @uvc_name.setter
+    def uvc_name(self, val: str):
+        self.info.uvc_name = val
+
+    @property
+    def version(self) -> str:
+        return self.info.version
+
+    @version.setter
+    def version(self, val: str):
+        self.info.version = val
+
+    @property
+    def mode(self) -> str:
+        return self.info.mode
+
+    @mode.setter
+    def mode(self, val: str):
+        self.info.mode = val
+
+    @property
+    def master_num(self) -> int:
+        return self.info.master_num
+
+    @master_num.setter
+    def master_num(self, val: int):
+        self.info.master_num = val
+
+    @property
+    def slave_num(self) -> int:
+        return self.info.slave_num
+
+    @slave_num.setter
+    def slave_num(self, val: int):
+        self.info.slave_num = val
+
+    @property
+    def agent_num(self) -> int:
+        return self.info.agent_num
+
+    @agent_num.setter
+    def agent_num(self, val: int):
+        self.info.agent_num = val
+
+    @property
+    def with_env(self) -> bool:
+        return self.info.with_env
+
+    @with_env.setter
+    def with_env(self, val: bool):
+        self.info.with_env = val
+
+    @property
+    def with_coverage(self) -> bool:
+        return self.info.with_coverage
+
+    @with_coverage.setter
+    def with_coverage(self, val: bool):
+        self.info.with_coverage = val
+
+    @property
+    def with_scoreboard(self) -> bool:
+        return self.info.with_scoreboard
+
+    @with_scoreboard.setter
+    def with_scoreboard(self, val: bool):
+        self.info.with_scoreboard = val
+
+    @property
+    def with_ref_model(self) -> bool:
+        return self.info.with_ref_model
+
+    @with_ref_model.setter
+    def with_ref_model(self, val: bool):
+        self.info.with_ref_model = val
+
     def get_input_args(self) -> argparse.Namespace:
-        """获取命令行参数"""
-        parser = argparse.ArgumentParser(description='UVC Generator Tool')
-        parser.add_argument('-t', '--tpl_dir', 
-                          default=self.DEFAULT_TPL, 
-                          help='UVC template directory path (absolute path or folder name in templates/)')
-        parser.add_argument('-n', '--uvc_name', 
-                          required=True,
-                          help='UVC name')
-        parser.add_argument('-o', '--output',
-                          default=os.getcwd(),
-                          help='Output directory path')
-        parser.add_argument('-v', '--version',
-                          default='v1.0',
-                          help='UVC version')
-        parser.add_argument('-m', '--mode',
-                          choices=['single', 'mstslv'],
-                          default='single',
-                          help='Generation mode: single (default) or mstslv')
-        parser.add_argument('--mst-num',
-                          type=int, default=1,
-                          help='Number of master agents (mstslv mode)')
-        parser.add_argument('--slv-num',
-                          type=int, default=1,
-                          help='Number of slave agents (mstslv mode)')
-        parser.add_argument('--agent-num',
-                          type=int, default=1,
-                          help='Number of agents (single mode)')
-        parser.add_argument('--with-env',
-                          action='store_true', default=False,
-                          help='Enable env/env_cfg includes in package')
-        parser.add_argument('--with-coverage',
-                          action='store_true', default=False,
-                          help='Enable coverage collector include in package')
-        parser.add_argument('--with-scoreboard',
-                          action='store_true', default=False,
-                          help='Enable scoreboard include in package')
-        parser.add_argument('--with-ref-model',
-                          action='store_true', default=False,
-                          help='Enable reference model include in package')
+        """获取命令行参数（向后兼容，推荐使用 build_parser）"""
+        parser = build_parser(self.DEFAULT_TPL)
         return parser.parse_args()
 
     def _resolve_template_dir(self, tpl_dir: str) -> str:
@@ -132,14 +211,18 @@ class UvcGen:
                   with_coverage: bool = False, with_scoreboard: bool = False,
                   with_ref_model: bool = False) -> None:
         """初始化参数"""
-        self.mode = mode
-        self.master_num = master_num
-        self.slave_num = slave_num
-        self.agent_num = agent_num
-        self.with_env = with_env
-        self.with_coverage = with_coverage
-        self.with_scoreboard = with_scoreboard
-        self.with_ref_model = with_ref_model
+        self.info = UvcInfo(
+            uvc_name=uvc_name,
+            version=version,
+            mode=mode,
+            master_num=master_num,
+            slave_num=slave_num,
+            agent_num=agent_num,
+            with_env=with_env,
+            with_coverage=with_coverage,
+            with_scoreboard=with_scoreboard,
+            with_ref_model=with_ref_model
+        )
 
         # If tpl_dir is the default and mode is mstslv, switch to mstslv template
         if mode == 'mstslv' and tpl_dir == self.DEFAULT_TPL:
@@ -152,35 +235,32 @@ class UvcGen:
             raise FileNotFoundError(f"Template directory not found: {resolved_tpl_dir}")
 
         self.tpl_dir = resolved_tpl_dir
-        self.uvc_name = uvc_name
-        self.version = version
         self.output = output
 
     def parse_tpl_dir(self) -> List[Path]:
         """解析模板目录"""
         file_list = []
         p = Path(self.tpl_dir)
-        
+
         console.print(Panel(f"[bold cyan]Template Directory[/]\n{p.resolve()}", expand=False))
-        
+
         with Progress(
             SpinnerColumn(),
             TextColumn("[progress.description]{task.description}"),
             console=console,
         ) as progress:
             task = progress.add_task("[cyan]Parsing template files...", total=None)
-            
+
             try:
                 for file_path in p.iterdir():
                     if file_path.is_file():
-                        #progress.console.print(f"[green]Found:[/] {file_path.name}")
                         file_list.append(file_path)
             except Exception as e:
                 console.print(f"[red]Error parsing template directory:[/] {str(e)}")
                 raise
-            
+
             progress.update(task, completed=True)
-        
+
         self.file_list = file_list
         return file_list
 
@@ -191,45 +271,32 @@ class UvcGen:
             trim_blocks=True,
             lstrip_blocks=True
         )
-        
+
         # 确定输出目录
         out_dir = Path(self.output).joinpath(
-            f'{self.uvc_name}_uvc',
-            self.version if self.version else ''
+            f'{self.info.uvc_name}_uvc',
+            self.info.version if self.info.version else ''
         )
         console.print(Panel(f"[bold cyan]Output Directory[/]\n{out_dir.resolve()}", expand=False))
-        
-        # Auto-implicate --with-env when agent_num >= 2
-        if self.mode == 'single' and self.agent_num >= 2 and not self.with_env:
-            self.with_env = True
-            console.print("[yellow]Note:[/] --agent-num >= 2 implies --with-env (env_cfg required)")
 
-        uvc_info = UvcInfo(
-            uvc_name=self.uvc_name,
-            version=self.version,
-            mode=self.mode,
-            master_num=self.master_num,
-            slave_num=self.slave_num,
-            agent_num=self.agent_num,
-            with_env=self.with_env,
-            with_coverage=self.with_coverage,
-            with_scoreboard=self.with_scoreboard,
-            with_ref_model=self.with_ref_model
-        )
+        # Auto-implicate --with-env when agent_num >= 2
+        if self.info.mode == 'single' and self.info.agent_num >= 2 and not self.info.with_env:
+            self.info.with_env = True
+            console.print("[yellow]Note:[/] --agent-num >= 2 implies --with-env (env_cfg required)")
 
         # Filter out env_cfg template when single-agent mode
         file_list = self.file_list
-        if self.mode == 'single' and self.agent_num <= 1:
+        if self.info.mode == 'single' and self.info.agent_num <= 1:
             file_list = [f for f in file_list
                          if f.name != 'xxx_environment_cfg.sv']
 
         # Filter out optional component templates when not requested
         optional_skip = set()
-        if not self.with_coverage:
+        if not self.info.with_coverage:
             optional_skip.add('xxx_coverage.sv')
-        if not self.with_scoreboard:
+        if not self.info.with_scoreboard:
             optional_skip.add('xxx_scoreboard.sv')
-        if not self.with_ref_model:
+        if not self.info.with_ref_model:
             optional_skip.add('xxx_ref_model.sv')
         if optional_skip:
             file_list = [f for f in file_list if f.name not in optional_skip]
@@ -251,7 +318,7 @@ class UvcGen:
 
                     # 修改文件名前缀
                     if output_path.name.startswith('xxx_'):
-                        new_filename = output_path.name.replace('xxx_', f'{self.uvc_name}_', 1)
+                        new_filename = output_path.name.replace('xxx_', f'{self.info.uvc_name}_', 1)
                         output_path = output_path.with_name(new_filename)
 
                     # 创建输出文件夹
@@ -260,29 +327,28 @@ class UvcGen:
                     # 读取并渲染模板
                     content = file_path.read_text(encoding='utf-8')
                     template = env.from_string(content)
-                    rendered_content = template.render(uvc_info=uvc_info)
-                    
+                    rendered_content = template.render(uvc_info=self.info)
+
                     # 写入文件
                     output_path.write_text(rendered_content, encoding='utf-8')
-                    #progress.console.print(f"[green]✓[/] Generated: {output_path.name}")
-                
+
                 except jinja2.TemplateError as e:
                     progress.console.print(f"[red]✗[/] Template error in {file_path.name}: {str(e)}")
                     continue
                 except Exception as e:
                     progress.console.print(f"[red]✗[/] Error processing {file_path.name}: {str(e)}")
                     continue
-                
+
                 progress.advance(task)
 
         # 创建 latest 符号链接
-        if self.version:
+        if self.info.version:
             try:
-                latest_link = Path(self.output).joinpath(f'{self.uvc_name}_uvc', 'latest')
+                latest_link = Path(self.output).joinpath(f'{self.info.uvc_name}_uvc', 'latest')
                 if latest_link.exists():
                     latest_link.unlink()
-                latest_link.symlink_to(self.version)
-                console.print(f"[green]✓[/] Created symbolic link: {latest_link} -> {self.version}")
+                latest_link.symlink_to(self.info.version)
+                console.print(f"[green]✓[/] Created symbolic link: {latest_link} -> {self.info.version}")
             except Exception as e:
                 console.print(f"[red]✗[/] Failed to create symbolic link: {str(e)}")
 
@@ -290,7 +356,8 @@ def main() -> int:
     """主函数"""
     try:
         uvc_gen = UvcGen()
-        args = uvc_gen.get_input_args()
+        parser = build_parser(uvc_gen.DEFAULT_TPL)
+        args = parser.parse_args()
         uvc_gen.init_para(args.tpl_dir, args.uvc_name, args.version, args.output,
                           mode=args.mode, master_num=args.mst_num, slave_num=args.slv_num,
                           agent_num=args.agent_num, with_env=args.with_env,
