@@ -1,7 +1,7 @@
 `ifndef {{ uvc_info.uvc_name.upper() }}_SCOREBOARD__SV
 `define {{ uvc_info.uvc_name.upper() }}_SCOREBOARD__SV
 
-class {{ uvc_info.uvc_name }}_scoreboard extends uvm_scoreboard;
+class {{ uvc_info.uvc_name }}_scoreboard extends uvm_component;
     `uvm_component_utils({{ uvc_info.uvc_name }}_scoreboard)
 
     uvm_analysis_imp #({{ uvc_info.uvc_name }}_transaction, {{ uvc_info.uvc_name }}_scoreboard) exp_port;
