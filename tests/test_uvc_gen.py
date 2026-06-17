@@ -269,3 +269,90 @@ def test_uvc_info_new_fields():
     assert info.with_coverage is True
     assert info.with_scoreboard is False
     assert info.with_ref_model is False
+
+
+def test_single_mode_default_unchanged():
+    """Default single mode (agent_num=1, no --with-*) produces identical output."""
+    gen = __import__('uvc_gen').UvcGen()
+    output_dir = tempfile.mkdtemp()
+    try:
+        gen.init_para(gen.DEFAULT_TPL, "ahb", "v1.0", output_dir, mode="single")
+        gen.parse_tpl_dir()
+        gen.generate_uvc()
+
+        env_content = (Path(output_dir) / "ahb_uvc" / "v1.0" / "ahb_environment.sv").read_text()
+        # Single agent: should have direct agt, NOT agt[]
+        assert "agt;" in env_content
+        assert "agt[]" not in env_content
+        # Should use type_id::create("agt", this)
+        assert 'create("agt"' in env_content
+
+        pkg_content = (Path(output_dir) / "ahb_uvc" / "v1.0" / "ahb_package.svp").read_text()
+        # environment include should be commented out by default
+        assert "//`include" in pkg_content
+        assert "ahb_environment.sv" in pkg_content
+    finally:
+        import shutil
+        shutil.rmtree(output_dir, ignore_errors=True)
+
+
+def test_single_mode_multi_agent_env_content():
+    """--agent-num 3 generates env with agt[] dynamic array."""
+    gen = __import__('uvc_gen').UvcGen()
+    output_dir = tempfile.mkdtemp()
+    try:
+        gen.init_para(gen.DEFAULT_TPL, "ahb", "v1.0", output_dir,
+                      mode="single", agent_num=3)
+        gen.parse_tpl_dir()
+        gen.generate_uvc()
+
+        env_content = (Path(output_dir) / "ahb_uvc" / "v1.0" / "ahb_environment.sv").read_text()
+        assert "agt[]" in env_content
+        assert "agent_num" in env_content
+        assert "agt_cfg" in env_content
+    finally:
+        import shutil
+        shutil.rmtree(output_dir, ignore_errors=True)
+
+
+def test_single_mode_with_env_includes():
+    """--with-env uncomments env include in package.svp."""
+    gen = __import__('uvc_gen').UvcGen()
+    output_dir = tempfile.mkdtemp()
+    try:
+        gen.init_para(gen.DEFAULT_TPL, "ahb", "v1.0", output_dir,
+                      mode="single", with_env=True)
+        gen.parse_tpl_dir()
+        gen.generate_uvc()
+
+        pkg_content = (Path(output_dir) / "ahb_uvc" / "v1.0" / "ahb_package.svp").read_text()
+        # environment include should NOT be commented out
+        lines = pkg_content.split('\n')
+        env_include_line = [l for l in lines if "environment.sv" in l][0]
+        assert not env_include_line.strip().startswith("//")
+    finally:
+        import shutil
+        shutil.rmtree(output_dir, ignore_errors=True)
+
+
+def test_single_mode_multi_agent_with_env():
+    """--agent-num 2 --with-env generates full env with dynamic arrays."""
+    gen = __import__('uvc_gen').UvcGen()
+    output_dir = tempfile.mkdtemp()
+    try:
+        gen.init_para(gen.DEFAULT_TPL, "ahb", "v1.0", output_dir,
+                      mode="single", agent_num=2, with_env=True)
+        gen.parse_tpl_dir()
+        gen.generate_uvc()
+
+        env_content = (Path(output_dir) / "ahb_uvc" / "v1.0" / "ahb_environment.sv").read_text()
+        assert "agt[]" in env_content
+        assert "new[env_cfg.agent_num]" in env_content
+
+        # Check env_cfg is generated
+        cfg_content = (Path(output_dir) / "ahb_uvc" / "v1.0" / "ahb_env_cfg.sv").read_text()
+        assert "agent_num" in cfg_content
+        assert "agt_cfg[]" in cfg_content
+    finally:
+        import shutil
+        shutil.rmtree(output_dir, ignore_errors=True)

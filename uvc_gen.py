@@ -212,17 +212,23 @@ class UvcGen:
             with_ref_model=self.with_ref_model
         )
 
+        # Filter out env_cfg template when single-agent mode
+        file_list = self.file_list
+        if self.mode == 'single' and self.agent_num <= 1:
+            file_list = [f for f in file_list
+                         if f.name != 'xxx_env_cfg.sv']
+
         with Progress(
             SpinnerColumn(),
             TextColumn("[progress.description]{task.description}"),
             console=console,
         ) as progress:
             task = progress.add_task(
-                "[cyan]Generating UVC files...", 
-                total=len(self.file_list)
+                "[cyan]Generating UVC files...",
+                total=len(file_list)
             )
 
-            for file_path in self.file_list:
+            for file_path in file_list:
                 try:
                     rel_path = file_path.relative_to(self.tpl_dir)
                     output_path = out_dir.joinpath(rel_path)
