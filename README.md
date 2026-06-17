@@ -6,6 +6,8 @@ UVM Verification Component 代码生成工具，用于自动生成符合 UVM 方
 
 - 支持 **single** 模式：生成单 agent 的标准 UVC
 - 支持 **mstslv** 模式：生成 master/slave 多 agent 的 UVC，支持动态数组实例化
+- 支持 **多 agent 实例化**：`--agent-num` 参数生成同类型 agent 动态数组
+- 支持 **可选组件**：coverage、scoreboard、ref_model 按需启用
 - 基于 Jinja2 模板引擎，可自定义模板
 - 自动生成文件名前缀替换（`xxx_` → `{uvc_name}_`）
 - 自动创建版本符号链接（`latest` → `{version}`）
@@ -27,8 +29,15 @@ python3 uvc_gen.py [OPTIONS]
 | `--version` | `-v` | ❌ | `v1.0` | UVC 版本号 |
 | `--output` | `-o` | ❌ | 当前目录 | 输出目录路径 |
 | `--tpl_dir` | `-t` | ❌ | 自动选择 | 模板目录路径 |
-| `--mst-num` | - | ❌ | `1` | Master agent 数量（仅 mstslv 模式） |
-| `--slv-num` | - | ❌ | `1` | Slave agent 数量（仅 mstslv 模式） |
+| `--agent-num` | - | ❌ | `1` | 同类型 agent 数量（single 模式） |
+| `--mst-num` | - | ❌ | `1` | Master agent 数量（mstslv 模式） |
+| `--slv-num` | - | ❌ | `1` | Slave agent 数量（mstslv 模式） |
+| `--with-env` | - | ❌ | `False` | 启用 env/env_cfg 组件 |
+| `--with-coverage` | - | ❌ | `False` | 启用覆盖率收集器 |
+| `--with-scoreboard` | - | ❌ | `False` | 启用记分板 |
+| `--with-ref-model` | - | ❌ | `False` | 启用参考模型 |
+
+> **注意：** `--agent-num >= 2` 时会自动启用 `--with-env`（多 agent 需要 env_cfg）。
 
 ### 使用示例
 
@@ -40,6 +49,26 @@ python3 uvc_gen.py -n ahb -o ./output
 
 # 生成 SPI UVC，指定版本
 python3 uvc_gen.py -n spi -v v2.0 -o ./output
+```
+
+#### 2. 多 Agent 实例化
+
+```bash
+# 生成 3 个同类型 agent（自动启用 env）
+python3 uvc_gen.py -n ahb --agent-num 3 -o ./output
+
+# 生成 2 个 agent + 可选组件
+python3 uvc_gen.py -n ahb --agent-num 2 --with-env --with-coverage --with-scoreboard -o ./output
+```
+
+#### 3. 可选组件
+
+```bash
+# 启用覆盖率收集器
+python3 uvc_gen.py -n ahb --with-coverage -o ./output
+
+# 启用所有可选组件
+python3 uvc_gen.py -n ahb --with-env --with-coverage --with-scoreboard --with-ref-model -o ./output
 ```
 
 **生成文件列表（10个）：**
@@ -95,7 +124,9 @@ output/ahb_uvc/v1.0/
 import subprocess
 
 def generate_uvc(uvc_name, mode="single", version="v1.0", output="./output",
-                 mst_num=1, slv_num=1):
+                 mst_num=1, slv_num=1, agent_num=1,
+                 with_env=False, with_coverage=False,
+                 with_scoreboard=False, with_ref_model=False):
     """调用 uvc_gen 生成 UVC"""
     cmd = [
         "python3", "uvc_gen.py",
@@ -107,6 +138,13 @@ def generate_uvc(uvc_name, mode="single", version="v1.0", output="./output",
 
     if mode == "mstslv":
         cmd.extend(["--mst-num", str(mst_num), "--slv-num", str(slv_num)])
+    else:
+        cmd.extend(["--agent-num", str(agent_num)])
+
+    if with_env: cmd.append("--with-env")
+    if with_coverage: cmd.append("--with-coverage")
+    if with_scoreboard: cmd.append("--with-scoreboard")
+    if with_ref_model: cmd.append("--with-ref-model")
 
     result = subprocess.run(cmd, capture_output=True, text=True)
     if result.returncode != 0:
@@ -115,6 +153,7 @@ def generate_uvc(uvc_name, mode="single", version="v1.0", output="./output",
 
 # 使用示例
 generate_uvc("ahb", mode="mstslv", mst_num=2, slv_num=1)
+generate_uvc("ahb", agent_num=3, with_env=True, with_coverage=True)
 ```
 
 ### 模块导入调用
@@ -126,7 +165,9 @@ sys.path.insert(0, "/path/to/uvc_gen")
 from uvc_gen import UvcGen, UvcInfo
 
 def generate_uvc(uvc_name, mode="single", version="v1.0", output="./output",
-                 mst_num=1, slv_num=1):
+                 mst_num=1, slv_num=1, agent_num=1,
+                 with_env=False, with_coverage=False,
+                 with_scoreboard=False, with_ref_model=False):
     """使用 UvcGen 类生成 UVC"""
     gen = UvcGen()
     gen.init_para(
@@ -136,13 +177,19 @@ def generate_uvc(uvc_name, mode="single", version="v1.0", output="./output",
         output=output,
         mode=mode,
         master_num=mst_num,
-        slave_num=slv_num
+        slave_num=slv_num,
+        agent_num=agent_num,
+        with_env=with_env,
+        with_coverage=with_coverage,
+        with_scoreboard=with_scoreboard,
+        with_ref_model=with_ref_model
     )
     gen.parse_tpl_dir()
     gen.generate_uvc()
 
 # 使用示例
 generate_uvc("ahb", mode="mstslv", mst_num=2, slv_num=1)
+generate_uvc("ahb", agent_num=3, with_env=True, with_coverage=True)
 ```
 
 ## 模板变量
@@ -156,6 +203,11 @@ generate_uvc("ahb", mode="mstslv", mst_num=2, slv_num=1)
 | `uvc_info.mode` | `str` | 生成模式 | `"single"` / `"mstslv"` |
 | `uvc_info.master_num` | `int` | Master 数量 | `2` |
 | `uvc_info.slave_num` | `int` | Slave 数量 | `3` |
+| `uvc_info.agent_num` | `int` | 同类型 agent 数量 | `3` |
+| `uvc_info.with_env` | `bool` | 是否启用 env | `True` / `False` |
+| `uvc_info.with_coverage` | `bool` | 是否启用 coverage | `True` / `False` |
+| `uvc_info.with_scoreboard` | `bool` | 是否启用 scoreboard | `True` / `False` |
+| `uvc_info.with_ref_model` | `bool` | 是否启用 ref_model | `True` / `False` |
 
 ### 模板示例
 
@@ -181,16 +233,21 @@ templates/
     ├── xxx_uvc/                # Single 模式模板
     │   ├── xxx_agent.sv
     │   ├── xxx_config.sv
+    │   ├── xxx_coverage.sv     # 可选组件
     │   ├── xxx_driver.sv
     │   ├── xxx_environment.sv
+    │   ├── xxx_environment_cfg.sv  # 多 agent 时使用
     │   ├── xxx_intf.sv
     │   ├── xxx_monitor.sv
     │   ├── xxx_package.svp
+    │   ├── xxx_ref_model.sv    # 可选组件
+    │   ├── xxx_scoreboard.sv   # 可选组件
     │   ├── xxx_seq_lib.sv
     │   ├── xxx_sequencer.sv
     │   └── xxx_transaction.sv
     └── xxx_uvc_mstslv/         # Master/Slave 模式模板
         ├── xxx_cfg.sv
+        ├── xxx_coverage.sv     # 可选组件
         ├── xxx_env.sv
         ├── xxx_env_cfg.sv
         ├── xxx_intf.sv
@@ -199,6 +256,8 @@ templates/
         ├── xxx_mst_monitor.sv
         ├── xxx_mst_sequencer.sv
         ├── xxx_package.svp
+        ├── xxx_ref_model.sv    # 可选组件
+        ├── xxx_scoreboard.sv   # 可选组件
         ├── xxx_seq_lib.sv
         ├── xxx_slv_agent.sv
         ├── xxx_slv_driver.sv

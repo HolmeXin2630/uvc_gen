@@ -1042,9 +1042,46 @@ cat /tmp/uvc_mstslv/ahb_uvc/v1.0/ahb_package.svp
 rm -rf /tmp/uvc_mstslv
 ```
 
-- [ ] **Step 5: Final commit**
+- [x] **Step 5: Final commit**
 
 ```bash
 git add -A
 git commit -m "feat: complete uvc_gen extension — multi-agent and optional components"
+```
+
+---
+
+## ✅ Implementation Complete
+
+**Status:** All 5 tasks completed successfully
+
+**Test Results:** 37/37 pytest tests passing
+
+**Commits:**
+1. `4f45a44` - feat: add --agent-num and --with-* CLI arguments
+2. `7a956e5` - feat: single-mode env supports multi-agent via --agent-num
+3. `4af0ca3` - feat: add optional component templates (coverage, scoreboard, ref_model)
+4. `415d9b4` - fix: use uvm_component instead of uvm_scoreboard for UVM 1.2 compatibility
+5. `3683e54` - feat: mstslv mode supports optional components (coverage, scoreboard, ref_model)
+
+**Key Design Decisions:**
+- Default output unchanged: `python3 uvc_gen.py -n ahb -o ./output` still produces 10 files
+- `--agent-num >= 2` auto-implies `--with-env` (env_cfg required for dynamic arrays)
+- Scoreboard uses `uvm_component` (not `uvm_scoreboard`) for UVM 1.2 compatibility
+- Optional component files are only generated when `--with-*` flag is set
+- Package includes are commented out by default, uncommented when `--with-*` is active
+
+**Usage Examples:**
+```bash
+# Default (unchanged from before)
+python3 uvc_gen.py -n ahb -o ./output
+
+# Multi-agent with env
+python3 uvc_gen.py -n ahb --agent-num 3 --with-env -o ./output
+
+# Full-featured
+python3 uvc_gen.py -n ahb --agent-num 2 --with-env --with-coverage --with-scoreboard --with-ref-model -o ./output
+
+# mstslv with optional components
+python3 uvc_gen.py -n ahb -m mstslv --mst-num 2 --slv-num 1 --with-coverage -o ./output
 ```
