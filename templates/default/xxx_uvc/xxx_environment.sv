@@ -25,6 +25,7 @@ endfunction: new
 function void {{ uvc_info.uvc_name }}_environment::build_phase(uvm_phase phase);
     super.build_phase(phase);
 {% if uvc_info.agent_num > 1 %}
+    env_cfg.build();
     agt = new[env_cfg.agent_num];
     foreach (agt[i]) begin
         agt[i] = {{ uvc_info.uvc_name }}_agent::type_id::create(

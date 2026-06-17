@@ -350,9 +350,32 @@ def test_single_mode_multi_agent_with_env():
         assert "new[env_cfg.agent_num]" in env_content
 
         # Check env_cfg is generated
-        cfg_content = (Path(output_dir) / "ahb_uvc" / "v1.0" / "ahb_env_cfg.sv").read_text()
+        cfg_content = (Path(output_dir) / "ahb_uvc" / "v1.0" / "ahb_environment_cfg.sv").read_text()
         assert "agent_num" in cfg_content
         assert "agt_cfg[]" in cfg_content
+    finally:
+        import shutil
+        shutil.rmtree(output_dir, ignore_errors=True)
+
+
+def test_single_mode_multi_agent_auto_implies_env():
+    """--agent-num 2 without --with-env should auto-implicate with_env."""
+    gen = __import__('uvc_gen').UvcGen()
+    output_dir = tempfile.mkdtemp()
+    try:
+        gen.init_para(gen.DEFAULT_TPL, "ahb", "v1.0", output_dir,
+                      mode="single", agent_num=2)
+        gen.parse_tpl_dir()
+        gen.generate_uvc()
+
+        # with_env should be auto-set to True
+        assert gen.with_env is True
+
+        # Package should have env include uncommented
+        pkg_content = (Path(output_dir) / "ahb_uvc" / "v1.0" / "ahb_package.svp").read_text()
+        lines = pkg_content.split('\n')
+        env_include_line = [l for l in lines if "environment.sv" in l][0]
+        assert not env_include_line.strip().startswith("//")
     finally:
         import shutil
         shutil.rmtree(output_dir, ignore_errors=True)

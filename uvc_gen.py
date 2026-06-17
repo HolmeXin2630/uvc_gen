@@ -199,6 +199,11 @@ class UvcGen:
         )
         console.print(Panel(f"[bold cyan]Output Directory[/]\n{out_dir.resolve()}", expand=False))
         
+        # Auto-implicate --with-env when agent_num >= 2
+        if self.mode == 'single' and self.agent_num >= 2 and not self.with_env:
+            self.with_env = True
+            console.print("[yellow]Note:[/] --agent-num >= 2 implies --with-env (env_cfg required)")
+
         uvc_info = UvcInfo(
             uvc_name=self.uvc_name,
             version=self.version,
@@ -216,7 +221,7 @@ class UvcGen:
         file_list = self.file_list
         if self.mode == 'single' and self.agent_num <= 1:
             file_list = [f for f in file_list
-                         if f.name != 'xxx_env_cfg.sv']
+                         if f.name != 'xxx_environment_cfg.sv']
 
         with Progress(
             SpinnerColumn(),
